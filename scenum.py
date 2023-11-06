@@ -1,19 +1,43 @@
 import argparse
 import os
+from contextlib import nullcontext
+from pathlib import Path
 from subprocess import Popen, PIPE
+
 
 BANNER_SIGN = "="
 BANNER_SIGN_COUNT = 20
+BANNER_COLOR = "\033[92m"  # Green
 
 
 def print_banner(text):
     print(
-        "\n"
+        f"\n{BANNER_COLOR}"
         + BANNER_SIGN * BANNER_SIGN_COUNT
         + f" {text} "
         + BANNER_SIGN * BANNER_SIGN_COUNT
-        + "\n"
+        + "\n\033[0m"
     )
+
+
+def build_file_path(output_directory, filename):
+    return None if output_directory is None else Path(output_directory) / filename
+
+
+def process_output(process, path=None):
+    with open(path, "w+") if path is not None else nullcontext() as file:
+        while process.poll() is None:
+            line = process.stdout.readline().decode()
+
+            print(line, end="")
+            if file:
+                file.write(line)
+
+        remaining_text = process.stdout.read().decode()
+
+        print(remaining_text, end="")
+        if file:
+            file.write(remaining_text)
 
 
 def nmap_stage(host):
@@ -35,18 +59,42 @@ def nmap_stage(host):
 
 
 def nmap_full(host, ports, output_directory):
+    process_args = [
+        "nmap",
+        "-T4",
+        "-p",
+        ",".join(ports),
+        "-A",
+        "--script=version,vuln",
+        host,
+    ]
+
+    if output_directory:
+        process_args.extend(["-oA", build_file_path(output_directory, "nmap")])
+
     process = Popen(
-        ["nmap", "-T4", "-p", ",".join(ports), "-A", "--script=version,vuln", host],
+        process_args,
         stdout=PIPE,
         stderr=PIPE,
     )
 
-    while process.poll() is None:
-        line = process.stdout.readline()
+    process_output(process)
 
-        print(line.decode(), end="")
 
-    print(process.stdout.read().decode(), end="")
+def nikto(host, output_directory):
+    process = Popen(["nikto", "-h", host], stdout=PIPE, stderr=PIPE)
+
+    process_output(process, build_file_path(output_directory, "nikto.txt"))
+
+
+def whatweb(host, output_directory):
+    process = Popen(["whatweb", "-v", host], stdout=PIPE, stderr=PIPE)
+
+    process_output(process, build_file_path(output_directory, "whatweb.txt"))
+
+
+def gobuster(host, output_directory):
+    pass
 
 
 def main(host, output_directory):
@@ -55,6 +103,16 @@ def main(host, output_directory):
 
     print_banner("NMAP FULL")
     nmap_full(host, ports, output_directory)
+
+    if "80" in ports:
+        print_banner("NIKTO SCAN")
+        nikto(host, output_directory)
+
+        print_banner("WHATWEB")
+        whatweb(host, output_directory)
+
+        print_banner("GOBUSTER DIRECTORY WORDLIST")
+        gobuster(host, output_directory)
 
 
 if __name__ == "__main__":
@@ -68,16 +126,13 @@ if __name__ == "__main__":
         "--out",
         type=str,
         required=False,
-        help="the directory to put scans and enumerate results in, current directory by default",
+        help="save scans and enumerations in the specified directory",
         dest="dir",
     )
 
     args = parser.parse_args()
 
-    if args.dir == None:
-        args.dir = os.getcwd()
-
-    if not os.path.isdir(args.dir):
+    if args.dir and not os.path.isdir(args.dir):
         raise SystemExit(f"Error: directory '{args.dir}' does not exist.")
 
     main(args.host, args.dir)
