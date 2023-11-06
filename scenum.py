@@ -93,11 +93,15 @@ def whatweb(host, output_directory):
     process_output(process, build_file_path(output_directory, "whatweb.txt"))
 
 
-def gobuster(host, output_directory):
-    pass
+def gobuster(host, output_directory, dirlist):
+    process = Popen(
+        ["gobuster", "dir", "-u", host, "-w", dirlist], stdout=PIPE, stderr=PIPE
+    )
+
+    process_output(process, build_file_path(output_directory, "gobuster.txt"))
 
 
-def main(host, output_directory):
+def main(host, output_directory, dirlist):
     print_banner("NMAP STAGED")
     ports = nmap_stage(host)
 
@@ -111,8 +115,9 @@ def main(host, output_directory):
         print_banner("WHATWEB")
         whatweb(host, output_directory)
 
-        print_banner("GOBUSTER DIRECTORY WORDLIST")
-        gobuster(host, output_directory)
+        if dirlist:
+            print_banner("GOBUSTER DIRECTORY WORDLIST")
+            gobuster(host, output_directory, dirlist)
 
 
 if __name__ == "__main__":
@@ -129,10 +134,25 @@ if __name__ == "__main__":
         help="save scans and enumerations in the specified directory",
         dest="dir",
     )
+    parser.add_argument(
+        "-d",
+        "--dirlist",
+        type=str,
+        required=False,
+        help="brute force directories with specified wordlist if webserver is present",
+        dest="dirlist",
+    )
+
+    parser.formatter_class = lambda prog: argparse.RawTextHelpFormatter(
+        prog, max_help_position=40
+    )
 
     args = parser.parse_args()
 
     if args.dir and not os.path.isdir(args.dir):
         raise SystemExit(f"Error: directory '{args.dir}' does not exist.")
 
-    main(args.host, args.dir)
+    if args.dirlist and not os.path.isfile(args.dirlist):
+        raise SystemExit(f"Error: file '{args.dirlist}' does not exist.")
+
+    main(args.host, args.dir, args.dirlist)
