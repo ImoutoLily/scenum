@@ -25,19 +25,25 @@ def build_file_path(output_directory, filename):
 
 
 def process_output(process, path=None):
+    lines = []
+
     with open(path, "w+") if path is not None else nullcontext() as file:
         while process.poll() is None:
             line = process.stdout.readline().decode()
 
             print(line, end="")
+            lines.append(line)
             if file:
                 file.write(line)
 
         remaining_text = process.stdout.read().decode()
 
         print(remaining_text, end="")
+        lines.append(remaining_text)
         if file:
             file.write(remaining_text)
+
+    return lines
 
 
 def nmap_stage(host):
@@ -101,12 +107,52 @@ def gobuster(host, output_directory, dirlist):
     process_output(process, build_file_path(output_directory, "gobuster.txt"))
 
 
+def ftp_anonymous(host, output_directory):
+    pass
+
+
+def smb_anonymous(host, output_directory):
+    shares = []
+
+    process = Popen(["smbclient", "-N", "-L", f"\\\\{host}"], stdout=PIPE, stderr=PIPE)
+
+    lines = process_output(process, build_file_path(output_directory, "smb.txt"))
+
+    if process.returncode == 0:
+        shares = [
+            line.lstrip().split(" ")[0] for line in lines[4:] if line.startswith("\t")
+        ]
+
+        for share in shares:
+            print_banner(f"SMB SHARE {share}")
+
+            process = Popen(
+                ["smbclient", "-c", "ls;exit", "-N", f"\\\\{host}\\{share}"],
+                stdout=PIPE,
+                stderr=PIPE,
+            )
+
+            process_output(
+                process, build_file_path(output_directory, f"smb_share_{share}.txt")
+            )
+
+
 def main(host, output_directory, dirlist):
     print_banner("NMAP STAGED")
     ports = nmap_stage(host)
 
     print_banner("NMAP FULL")
     nmap_full(host, ports, output_directory)
+
+    ports = ["445"]
+
+    if "21" in ports:
+        print_banner("FTP ANONYMOUS ENUM")
+        ftp_anonymous(host, output_directory)
+
+    if "445" in ports:
+        print_banner("SMB ANONYMOUS ENUM")
+        smb_anonymous(host, output_directory)
 
     if "80" in ports:
         print_banner("NIKTO SCAN")
@@ -140,7 +186,6 @@ if __name__ == "__main__":
         type=str,
         required=False,
         help="brute force directories with specified wordlist if webserver is present",
-        dest="dirlist",
     )
 
     parser.formatter_class = lambda prog: argparse.RawTextHelpFormatter(
