@@ -24,7 +24,7 @@ def build_file_path(output_directory, filename):
     return None if output_directory is None else Path(output_directory) / filename
 
 
-def process_output(process, path=None):
+def process_output(process, path=None, file_mode="w+", separate=False):
     lines = []
 
     with open(path, "w+") if path is not None else nullcontext() as file:
@@ -111,6 +111,18 @@ def ftp_anonymous(host, output_directory):
     pass
 
 
+def smb_anonymous_share(host, output_directory, share):
+    print_banner(f"SMB SHARE {share}")
+
+    process = Popen(
+        ["smbclient", "-c", "pwd;ls;exit", "-N", f"\\\\{host}\\{share}"],
+        stdout=PIPE,
+        stderr=PIPE,
+    )
+
+    process_output(process, build_file_path(output_directory, f"smb_share_{share}.txt"))
+
+
 def smb_anonymous(host, output_directory):
     shares = []
 
@@ -123,26 +135,16 @@ def smb_anonymous(host, output_directory):
             line.lstrip().split(" ")[0] for line in lines[4:] if line.startswith("\t")
         ]
 
-        for share in shares:
-            print_banner(f"SMB SHARE {share}")
-
-            process = Popen(
-                ["smbclient", "-c", "ls;exit", "-N", f"\\\\{host}\\{share}"],
-                stdout=PIPE,
-                stderr=PIPE,
-            )
-
-            process_output(
-                process, build_file_path(output_directory, f"smb_share_{share}.txt")
-            )
+    for share in shares:
+        smb_anonymous_share(host, output_directory, share)
 
 
 def main(host, output_directory, dirlist):
     print_banner("NMAP STAGED")
-    ports = nmap_stage(host)
+    # ports = nmap_stage(host)
 
     print_banner("NMAP FULL")
-    nmap_full(host, ports, output_directory)
+    # nmap_full(host, ports, output_directory)
 
     ports = ["445"]
 
