@@ -1,4 +1,5 @@
 import argparse
+import ftplib
 import os
 from contextlib import nullcontext
 from pathlib import Path
@@ -43,7 +44,7 @@ def process_output(process, path=None, file_mode="w+", separate=False):
         if file:
             file.write(remaining_text)
 
-    return lines
+        return lines
 
 
 def nmap_stage(host):
@@ -108,7 +109,31 @@ def gobuster(host, output_directory, dirlist):
 
 
 def ftp_anonymous(host, output_directory):
-    pass
+    with open(
+        build_file_path(output_directory, "ftp.txt"), "w+"
+    ) if output_directory is not None else nullcontext() as file:
+        with ftplib.FTP(host) as ftp:
+            login = ftp.login()
+            print(login)
+
+            if file:
+                file.write(f"{login}\n")
+
+            if "success" in login:
+                current_directory = "Current directory in FTP: " + ftp.pwd()
+                print(f"{current_directory}\n")
+
+                if file:
+                    file.write(f"{current_directory}\n\n")
+
+                dirs = []
+                ftp.dir(dirs.append)
+
+                dirs = "\n".join(dirs)
+                print(dirs)
+
+                if file:
+                    file.write(f"{dirs}\n")
 
 
 def smb_anonymous_share(host, output_directory, share):
@@ -144,9 +169,7 @@ def main(host, output_directory, dirlist):
     ports = nmap_stage(host)
 
     print_banner("NMAP FULL")
-    nmap_full(host, ports, output_directory)
-
-    ports = ["445"]
+    # nmap_full(host, ports, output_directory)
 
     if "21" in ports:
         print_banner("FTP ANONYMOUS ENUM")
