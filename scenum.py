@@ -32,19 +32,22 @@ def process_output(process, path=None, file_mode="w+", separate=False):
         while process.poll() is None:
             line = process.stdout.readline().decode()
 
-            print(line, end="")
+            write_output(line, file=file)
             lines.append(line)
-            if file:
-                file.write(line)
 
         remaining_text = process.stdout.read().decode()
 
-        print(remaining_text, end="")
+        write_output(remaining_text, file=file)
         lines.append(remaining_text)
-        if file:
-            file.write(remaining_text)
 
         return lines
+
+
+def write_output(text, file=None):
+    print(text, end="")
+
+    if file:
+        file.write(text)
 
 
 def nmap_stage(host):
@@ -55,12 +58,12 @@ def nmap_stage(host):
     while process.poll() is None:
         line = process.stdout.readline()
 
-        print(line.decode(), end="")
+        write_output(line.decode())
 
         if "/tcp" in line.decode():
             ports.append(line.decode().split("/")[0])
 
-    print(process.stdout.read().decode(), end="")
+    write_output(process.stdout.read().decode())
 
     return ports
 
@@ -113,27 +116,17 @@ def ftp_anonymous(host, output_directory):
         build_file_path(output_directory, "ftp.txt"), "w+"
     ) if output_directory is not None else nullcontext() as file:
         with ftplib.FTP(host) as ftp:
-            login = ftp.login()
-            print(login)
+            try:
+                write_output(ftp.login() + "\n", file=file)
+            except ftplib.all_errors as e:
+                write_output(f"Anonymous FTP login failed with: {e}\n", file=file)
+                return
 
-            if file:
-                file.write(f"{login}\n")
+            write_output("Current directory in FTP: " + ftp.pwd() + "\n", file=file)
 
-            if "success" in login:
-                current_directory = "Current directory in FTP: " + ftp.pwd()
-                print(f"{current_directory}\n")
-
-                if file:
-                    file.write(f"{current_directory}\n\n")
-
-                dirs = []
-                ftp.dir(dirs.append)
-
-                dirs = "\n".join(dirs)
-                print(dirs)
-
-                if file:
-                    file.write(f"{dirs}\n")
+            dirs = []
+            ftp.dir(dirs.append)
+            write_output("\n".join(dirs) + "\n", file=file)
 
 
 def smb_anonymous_share(host, output_directory, share):
