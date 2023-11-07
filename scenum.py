@@ -141,10 +141,10 @@ def smb_anonymous(host, output_directory):
 
 def main(host, output_directory, dirlist):
     print_banner("NMAP STAGED")
-    # ports = nmap_stage(host)
+    ports = nmap_stage(host)
 
     print_banner("NMAP FULL")
-    # nmap_full(host, ports, output_directory)
+    nmap_full(host, ports, output_directory)
 
     ports = ["445"]
 
