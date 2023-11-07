@@ -102,7 +102,26 @@ def nikto(host, output_directory):
 def whatweb(host, output_directory):
     process = Popen(["whatweb", "-v", host], stdout=PIPE, stderr=PIPE)
 
-    process_output(process, build_file_path(output_directory, "whatweb.txt"))
+    lines = process_output(process, build_file_path(output_directory, "whatweb.txt"))
+
+    return "".join(lines)
+
+
+def wpscan(host, output_directory):
+    process = Popen(
+        [
+            "wpscan",
+            "--url",
+            host,
+            "--enumerate",
+            "ap,at,dbe,cb,u",
+            "--ignore-main-redirect",
+        ],
+        stdout=PIPE,
+        stderr=PIPE,
+    )
+
+    process_output(process, build_file_path(output_directory, "wpscan.txt"))
 
 
 def gobuster(host, output_directory, dirlist):
@@ -168,21 +187,25 @@ def main(host, output_directory, dirlist):
 
     if "21" in ports:
         print_banner("FTP ANONYMOUS ENUM")
-        ftp_anonymous(host, output_directory)
+        # ftp_anonymous(host, output_directory)
 
     if "445" in ports:
         print_banner("SMB ANONYMOUS ENUM")
-        smb_anonymous(host, output_directory)
+        # smb_anonymous(host, output_directory)
 
     if "80" in ports:
-        print_banner("NIKTO SCAN")
-        nikto(host, output_directory)
+        print_banner("NIKTO")
+        # nikto(host, output_directory)
 
         print_banner("WHATWEB")
-        whatweb(host, output_directory)
+        built_with = whatweb(host, output_directory)
+
+        if "WordPress" in built_with:
+            print_banner("WPSCAN")
+            wpscan(host, output_directory)
 
         if dirlist:
-            print_banner("GOBUSTER DIRECTORY WORDLIST")
+            print_banner("GOBUSTER DIRECTORIES")
             gobuster(host, output_directory, dirlist)
 
 
