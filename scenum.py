@@ -1,6 +1,7 @@
 import argparse
 import ftplib
 import os
+import sys
 from contextlib import nullcontext
 from pathlib import Path
 from subprocess import Popen, PIPE
@@ -45,6 +46,7 @@ def process_output(process, path=None, file_mode="w+", separate=False):
 
 def write_output(text, file=None):
     print(text, end="")
+    sys.stdout.flush()
 
     if file:
         file.write(text)
