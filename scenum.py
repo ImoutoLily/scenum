@@ -183,19 +183,19 @@ def main(host, output_directory, dirlist):
     ports = nmap_stage(host)
 
     print_banner("NMAP FULL")
-    # nmap_full(host, ports, output_directory)
+    nmap_full(host, ports, output_directory)
 
     if "21" in ports:
         print_banner("FTP ANONYMOUS ENUM")
-        # ftp_anonymous(host, output_directory)
+        ftp_anonymous(host, output_directory)
 
     if "445" in ports:
         print_banner("SMB ANONYMOUS ENUM")
-        # smb_anonymous(host, output_directory)
+        smb_anonymous(host, output_directory)
 
     if "80" in ports:
         print_banner("NIKTO")
-        # nikto(host, output_directory)
+        nikto(host, output_directory)
 
         print_banner("WHATWEB")
         built_with = whatweb(host, output_directory)
