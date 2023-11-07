@@ -14,7 +14,7 @@ A python tool to automate some scanning and enumeration for you. `scenum` makes 
 ```bash
 git clone https://github.com/ImoutoLily/scenum.git
 cd scenum
-python scenum.py -H <IP_OR_DOMAIN> -o ./
+python scenum.py -H IP_OR_DOMAIN -o ./
 ```
 
 To view the usage of the tool, run the following.
@@ -27,6 +27,6 @@ python scenum.py -h
 
 ``` bash
 python scenum.py -H 192.168.1.54 -o ./
-python scenum.py -H example.com -d /usr/share/wordlists/rockyou.txt
+python scenum.py -H example.com -d ~/wordlists/directories.txt
 ```
 
