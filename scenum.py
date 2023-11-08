@@ -1,5 +1,6 @@
 import argparse
 import ftplib
+import itertools
 import os
 import sys
 from contextlib import nullcontext
@@ -163,19 +164,24 @@ def smb_anonymous_share(host, output_directory, share):
 
 
 def smb_anonymous(host, output_directory):
-    shares = []
-
     process = Popen(["smbclient", "-N", "-L", f"\\\\{host}"], stdout=PIPE, stderr=PIPE)
 
     lines = process_output(process, build_file_path(output_directory, "smb.txt"))
 
     if process.returncode == 0:
-        shares = [
-            line.lstrip().split(" ")[0] for line in lines[4:] if line.startswith("\t")
-        ]
+        first_share_index = next(
+            i for i, line in enumerate(lines) if line.lstrip().startswith("Sharename")
+        )
+        first_share_index = -1 if first_share_index is None else first_share_index + 2
 
-    for share in shares:
-        smb_anonymous_share(host, output_directory, share)
+        shares = itertools.takewhile(
+            lambda s: s.startswith("\t"), lines[first_share_index:]
+        )
+
+        shares = [share.lstrip().split(" ")[0] for share in shares]
+
+        for share in shares:
+            smb_anonymous_share(host, output_directory, share)
 
 
 def main(host, output_directory, dirlist):
